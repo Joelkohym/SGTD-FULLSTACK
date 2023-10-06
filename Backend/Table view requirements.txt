@@ -1,0 +1,10 @@
+9769271,9814492,9497830
+
+Pilot location to = location from
+If no pilotage, to = empty. 
+
+
+10 times a day/person
+
+With info, vessel come in on 23rd, 1 urgent order released, this vessel coming on 23rd. 
+Pick and pack via IFS. Loading tomorrow evening, KOFF order. Purpose. 
