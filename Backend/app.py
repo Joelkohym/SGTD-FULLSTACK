@@ -1,37 +1,25 @@
-from flask import (
-    Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    session,
-    jsonify,
-    flash,
-    g,
-)
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, g
 from flask_mysqldb import MySQL
 from sqlalchemy import create_engine, text
 import re
 import requests
 import json
-import threading
-
-# import pygsheets
 from datetime import datetime, timedelta
 import pandas as pd
 import leafmap.foliumap as leafmap
 import folium
 import random
 import time
-import pytz
+import pytz 
 import os
+import threading
 from db_Vessel_map import get_map_data, display_map
 from db_Vessel_data_pull import delete_all_rows_vessel_location, PULL_GET_VCP_VDA_MPA
 from db_table_pull import (
     delete_all_rows_table_view,
     PULL_pilotage_service,
     PULL_vessel_due_to_arrive,
-    validate_imo,
+    validate_imo
 )
 from db_table_view_request import (
     get_data_from_MPA_Vessel_Arrival_Declaration,
@@ -47,27 +35,27 @@ from database import (
     new_pilotage_service,
     new_vessel_due_to_arrive,
 )
-
 from flask_swagger_ui import get_swaggerui_blueprint
 
 
 app = Flask(__name__)
 
-app.config["MYSQL_HOST"] = "aws.connect.psdb.cloud"
-app.config["MYSQL_USER"] = "8c5qff8fhgi0sz6adth2"
-app.config["MYSQL_PASSWORD"] = "pscale_pw_k1WZMRjpR4X9iVfFadNWQM6o2o2lscav9ydrcM5Qfdp"
-app.config["MYSQL_DB"] = "sgtd"
+app.config['MYSQL_HOST'] = os.environ['MYSQL_HOST']
+app.config['MYSQL_USER'] = os.environ['MYSQL_USER']
+app.config['MYSQL_PASSWORD'] = os.environ['MYSQL_PASSWORD']
+app.config['MYSQL_DB'] = os.environ['MYSQL_DB']
 
 app.secret_key = os.urandom(24)
 
 mysql = MySQL(app)
-db_connection_string = "mysql+pymysql://8c5qff8fhgi0sz6adth2:pscale_pw_k1WZMRjpR4X9iVfFadNWQM6o2o2lscav9ydrcM5Qfdp@aws.connect.psdb.cloud/sgtd?charset=utf8mb4"
-# db_connection_string = 'mysql+pymysql://2j104pgpfhay9dokc46k:pscale_pw_fiA5JrG88BcLgKuQmmK9WZHjaOlzf2BkRisjOD6FDn6@aws.connect.psdb.cloud/sgtd?charset=utf8mb4'
+
+db_connection_string = os.environ['DB_CONNECTION_STRING']
 engine = create_engine(
-    db_connection_string, connect_args={"ssl": {"ssl_ca": "/etc/ssl/cert.pem"}}
-)
-
-
+  db_connection_string,
+  connect_args={
+  "ssl": {
+            "ssl_ca": "/etc/ssl/cert.pem"}})
+    
 @app.route("/")
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -97,7 +85,7 @@ def login():
                 msg = f"Login success for {email}, please enter Vessel IMO number(s)"
                 print(f"Login success for {email}, redirect")
                 return redirect(url_for("table_view"))
-                # return render_template('vessel_request.html', msg=msg, email=email)
+
             else:
                 msg = "Invalid credentials, please try again.."
                 print("Invalid credentials, reset login")
@@ -106,8 +94,7 @@ def login():
             msg = "Invalid credentials, please try again."
             print("Invalid credentials, reset login")
             return render_template("login.html", msg=msg)
-            # if request.data['username'] and request.data['password'] in db:
-            #   user_data = load_data_from_db()
+
     if request.method == "GET":
         print("Requets == GET")
         return render_template("login.html")
@@ -133,46 +120,41 @@ def table_pull():
             delete_all_rows_table_view(session["gc"])
             user_vessel_imo = request.form["imo"]
             try:
-                # Split vessel_imo list into invdivual records
-                input_list = [int(x) for x in user_vessel_imo.split(",")]
-                print(f"Pilotage service input_list from html = {input_list}")
+              # Split vessel_imo list into invdivual records
+              input_list = [int(x) for x in user_vessel_imo.split(",")]
+              print(f"Pilotage service input_list from html = {input_list}")
 
-                # ========================              START PULL pilotage_service by vessel imo                   ===========================
-                # url_pilotage_service = (
-                #     f"{session['pitstop_url']}/api/v1/data/pull/pilotage_service"
-                # )
-                # PULL_pilotage_service(
-                #     url_pilotage_service,
-                #     input_list,
-                #     session["participant_id"],
-                #     session["api_key"],
-                # )
-                # ========================          END PULL pilotage_service                         ===========================
+              # ========================              START PULL pilotage_service by vessel imo                   ===========================
+              # url_pilotage_service = (
+              #     f"{session['pitstop_url']}/api/v1/data/pull/pilotage_service"
+              # )
+              # PULL_pilotage_service(
+              #     url_pilotage_service,
+              #     input_list,
+              #     session["participant_id"],
+              #     session["api_key"],
+              # )
+              # ========================          END PULL pilotage_service                         ===========================
 
-                # ========================          START PULL vessel_due_to_arrive by date            ===========================
-                url_vessel_due_to_arrive = (
-                    f"{session['pitstop_url']}/api/v1/data/pull/vessel_due_to_arrive"
-                )
-                print("Start PULL_vessel_due_to_arrive thread...")
-                print(datetime.now())
-                threading.Thread(
-                    target=PULL_vessel_due_to_arrive,
-                    args=(
-                        url_vessel_due_to_arrive,
-                        session["participant_id"],
-                        session["api_key"],
-                    ),
-                ).start()
-                print("End PULL_vessel_due_to_arrive thread...")
-                print(datetime.now())
-                # PULL_vessel_due_to_arrive(
-                #     url_vessel_due_to_arrive,
-                #     session["participant_id"],
-                #     session["api_key"],
-                # )
-                # ========================    END PULL vessel_due_to_arrive         ===========================
+              # ========================          START PULL vessel_due_to_arrive by date: Threaded            ===========================
+              url_vessel_due_to_arrive = (
+                  f"{session['pitstop_url']}/api/v1/data/pull/vessel_due_to_arrive"
+              )
+              print("Start PULL_vessel_due_to_arrive thread...")
+              print(datetime.now())
+              threading.Thread(
+                  target=PULL_vessel_due_to_arrive,
+                  args=(
+                      url_vessel_due_to_arrive,
+                      session["participant_id"],
+                      session["api_key"],
+                  ),
+              ).start()
+              print("End PULL_vessel_due_to_arrive thread...")
+              print(datetime.now())
+              # ========================    END PULL vessel_due_to_arrive: Threaded          ===========================
 
-                return redirect(url_for("table_view_request", imo=user_vessel_imo))
+              return redirect(url_for("table_view_request", imo=user_vessel_imo))
             except:
                 return render_template(
                     "table_view.html",
@@ -185,42 +167,40 @@ def table_pull():
         print("TABLE_PULL g.user is not valid")
         return redirect(url_for("login"))
 
-
 @app.route("/table_view_request/<imo>", methods=["GET", "POST"])
 def table_view_request(imo):
     if g.user:
-        try:
-            imo_list = imo.split(",")
-            print(f"IMO ==== {imo}")
-            print(f"IMO list ==== {imo_list}")
+      try:
+        imo_list = imo.split(",")
+        print(f"IMO ==== {imo}")
+        print(f"IMO list ==== {imo_list}")
 
-            # ======================== START GET MPA Vessel Arrival Declaration by IMO Number =============
-            Declaration_df = get_data_from_MPA_Vessel_Arrival_Declaration(imo_list)
-            # ======================== END GET MPA Vessel Arrival Declaration by IMO Number =============
-            # ======================== START GET MPA Vessel Due to Arrive and Depart by next 99 hours  =============
-            MPA_arrive_depart_df = get_data_from_vessel_due_to_arrive_and_depart()
-            # ======================== END GET MPA Vessel Due to Arrive and Depart by next 99 hours =============
-            # Filter the DataFrame based on imoNumbers
-            filtered_df_before = MPA_arrive_depart_df[
-                MPA_arrive_depart_df["vesselParticulars.imoNumber"].isin(imo_list)
-            ]
-            render_html = merge_arrivedepart_declaration_df(
-                filtered_df_before, Declaration_df
-            )
-            if render_html == 1:
-                return render_template("table_view.html")
-            # change purpose from Y,Y,N,N,N... to #1 indicator – Loading / Unloading Cargo #2 indicator – Loading / Unloading Passengers #3 indicator – Taking Bunker  #4 indicator – Taking Ship Supplies #5 indicator – Changing Crew #6 indicator – Shipyard Repair #7 indicator – Offshore Support #8 indicator – Not Used #9 indicator – Other Afloat Activities
-            else:
-                print(f"merge_arrivedepart_declaration_df = {render_html}")
-                return render_template(render_html)
-        except:
-            return render_template(
-                "table_view.html",
-                msg="Something went wrong with the data, please ensure IMO Number is valid.",
-            )
+        # ======================== START GET MPA Vessel Arrival Declaration by IMO Number =============
+        Declaration_df = get_data_from_MPA_Vessel_Arrival_Declaration(imo_list)
+        # ======================== END GET MPA Vessel Arrival Declaration by IMO Number =============
+        # ======================== START GET MPA Vessel Due to Arrive and Depart by next 99 hours  =============
+        MPA_arrive_depart_df = get_data_from_vessel_due_to_arrive_and_depart()
+        # ======================== END GET MPA Vessel Due to Arrive and Depart by next 99 hours =============
+        # Filter the DataFrame based on imoNumbers
+        filtered_df_before = MPA_arrive_depart_df[
+            MPA_arrive_depart_df["vesselParticulars.imoNumber"].isin(imo_list)
+        ]
+        render_html = merge_arrivedepart_declaration_df(
+            filtered_df_before, Declaration_df
+        )
+        if render_html == 1:
+            return render_template("table_view.html")
+        # change purpose from Y,Y,N,N,N... to #1 indicator – Loading / Unloading Cargo #2 indicator – Loading / Unloading Passengers #3 indicator – Taking Bunker  #4 indicator – Taking Ship Supplies #5 indicator – Changing Crew #6 indicator – Shipyard Repair #7 indicator – Offshore Support #8 indicator – Not Used #9 indicator – Other Afloat Activities
+        else:
+            print(f"merge_arrivedepart_declaration_df = {render_html}")
+            return render_template(render_html)
+      except:
+        return render_template(
+            "table_view.html",
+            msg="Something went wrong, please ensure IMO Number is valid.",
+        )
     else:
         return redirect(url_for("login"))
-
 
 # Make function for logout session
 @app.route("/logout")
@@ -301,6 +281,7 @@ def Vessel_data_pull():
     return redirect(url_for("login"))
 
 
+
 @app.route("/vessel_request/<msg>", methods=["GET", "POST"])
 def vessel_request(msg):
     if g.user:
@@ -310,7 +291,6 @@ def vessel_request(msg):
         return redirect(url_for("login"))
 
 
-# 9490820 / 9929297
 # ====================================####################MAP DB##############################========================================
 @app.route("/api/vessel_map", methods=["GET", "POST"])
 def Vessel_map():
@@ -369,13 +349,18 @@ def triangular_upload():
 ####################################  END UPLOAD UCC  ###############################################
 
 
-##########################################################RECEIVE in MySQL DB#############################################################################################
+
+
+
+##########################################################     RECEIVE in MySQL DB#############################################################################################
 
 
 # https://sgtd-api.onrender.com/api/vessel_due_to_arrive_db/receive/test@sgtradex.com
 @app.route("/api/vessel_due_to_arrive_db/receive/<email_url>", methods=["POST"])
 def RECEIVE_Vessel_due_to_arrive(email_url):
+    
     email = email_url
+    print(f"Received Vessel_due_to_arrive from {email_url}")
     receive_details_data = receive_details(email)
     # print(f"Vessel_current_position_receive:   Receive_details from database.py {receive_details(email)}")
     API_KEY = receive_details_data[1]
@@ -385,14 +370,14 @@ def RECEIVE_Vessel_due_to_arrive(email_url):
 
     data = request.data  # Get the raw data from the request body
 
-    print(f"Vessel_due_to_arrive = {data}")
+    #print(f"Vessel_due_to_arrive = {data}")
 
     data_str = data.decode("utf-8")  # Decode data as a UTF-8 string
     # Convert the JSON string to a Python dictionary
     data_dict = json.loads(data_str)
     row_data_vessel_due_to_arrive = data_dict["payload"]
-    print(f"row_data_vessel_due_to_arrive = {row_data_vessel_due_to_arrive}")
-    # ====================== Store VDA into DB =============================
+    #print(f"row_data_vessel_due_to_arrive = {row_data_vessel_due_to_arrive}")
+
     result = new_vessel_due_to_arrive(
         row_data_vessel_due_to_arrive, email, gsheet_cred_path
     )
@@ -406,6 +391,7 @@ def RECEIVE_Vessel_due_to_arrive(email_url):
 @app.route("/api/pilotage_service_db/receive/<email_url>", methods=["POST"])
 def RECEIVE_Pilotage_service(email_url):
     email = email_url
+    print(f"Received Pilotage_service from {email_url}")
     receive_details_data = receive_details(email)
     # print(f"Vessel_current_position_receive:   Receive_details from database.py {receive_details(email)}")
     API_KEY = receive_details_data[1]
@@ -415,14 +401,14 @@ def RECEIVE_Pilotage_service(email_url):
 
     data = request.data  # Get the raw data from the request body
 
-    print(f"Pilotage service = {data}")
+    #print(f"Pilotage service = {data}")
 
     data_str = data.decode("utf-8")  # Decode data as a UTF-8 string
     # Convert the JSON string to a Python dictionary
     data_dict = json.loads(data_str)
     row_data_pilotage_service = data_dict["payload"][-1]
-    print(f"row_data_Pilotage service = {row_data_pilotage_service}")
-    # ====================== Store VDA into DB =============================
+    #print(f"row_data_Pilotage service = {row_data_pilotage_service}")
+
     result = new_pilotage_service(data, email, gsheet_cred_path)
     if result == 1:
         # Append the data as a new row
@@ -436,7 +422,9 @@ def RECEIVE_Pilotage_service(email_url):
 # https://sgtd-api.onrender.com/api/vessel_current_position_db/receive/test@sgtradex.com
 @app.route("/api/vessel_current_position_db/receive/<email_url>", methods=["POST"])
 def RECEIVE_Vessel_current_position(email_url):
+  
     email = email_url
+    print(f"Received Vessel_current_position from {email_url}")
     receive_details_data = receive_details(email)
     # print(f"Vessel_current_position_receive:   Receive_details from database.py {receive_details(email)}")
     API_KEY = receive_details_data[1]
@@ -446,7 +434,7 @@ def RECEIVE_Vessel_current_position(email_url):
 
     data = request.data  # Get the raw data from the request body
 
-    print(f"Vessel_current_position = {data}")
+    #print(f"Vessel_current_position = {data}")
 
     data_str = data.decode("utf-8")  # Decode data as a UTF-8 string
     # Convert the JSON string to a Python dictionary
@@ -467,6 +455,7 @@ def RECEIVE_Vessel_current_position(email_url):
 @app.route("/api/vessel_movement_db/receive/<email_url>", methods=["POST"])
 def RECEIVE_Vessel_movement(email_url):
     email = email_url
+    print(f"Received Vessel_movement from {email_url}")
     receive_details_data = receive_details(email)
     # print(f"Vessel_movement_receive:  Receive_details from database.py {receive_details(email)}")
     API_KEY = receive_details_data[1]
@@ -553,10 +542,7 @@ def RECEIVE_Others(email_url):
     response_data = {"message": f"Received others from {email_url}"}
     return jsonify(response_data)
 
-
 ##########################################################MySQL DB#############################################################################################
-
-
 @app.before_request
 def before_request():
     g.user = None
@@ -576,10 +562,9 @@ def after_request(response):
     response.headers["Pragma"] = "no-cache"
     return response
 
-
 # Configure Swagger UI
 SWAGGER_URL = "/swagger"
-API_URL = "http://127.0.0.1:5000/swagger.json"
+API_URL = "https://sgtd-api.onrender.com//swagger.json"
 swaggerui_blueprint = get_swaggerui_blueprint(
     SWAGGER_URL, API_URL, config={"app_name": "SGTD Vessel Query API Swagger"}
 )

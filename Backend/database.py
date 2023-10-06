@@ -4,13 +4,13 @@ import os
 import json
 from datetime import datetime
 
-# db_connection_string = os.environ['DB_CONNECTION_STRING']
-# db_connection_string = "mysql+pymysql://2j104pgpfhay9dokc46k:pscale_pw_fiA5JrG88BcLgKuQmmK9WZHjaOlzf2BkRisjOD6FDn6@aws.connect.psdb.cloud/sgtd?charset=utf8mb4"
-db_connection_string = "mysql+pymysql://8c5qff8fhgi0sz6adth2:pscale_pw_k1WZMRjpR4X9iVfFadNWQM6o2o2lscav9ydrcM5Qfdp@aws.connect.psdb.cloud/sgtd?charset=utf8mb4"
-engine = create_engine(
-    db_connection_string, connect_args={"ssl": {"ssl_ca": "/etc/ssl/cert.pem"}}
-)
+db_connection_string = os.environ['DB_CONNECTION_STRING']
 
+engine = create_engine(
+  db_connection_string,
+  connect_args={
+  "ssl": {
+            "ssl_ca": "/etc/ssl/cert.pem"}})
 
 def load_data_from_db():
     with engine.connect() as conn:
@@ -76,21 +76,24 @@ def new_registration(data):
 
 
 def validate_login(email, password):
-    print(f"printing data from validate_login: email = {email}, password = {password}")
-
+    #print(f"printing data from validate_login: email = {email}, password = {password}")
+    print("validating....")
+    print(f"Email = {email}")
+    print(f"Email = {password}")
     with engine.connect() as conn:
         query = text(
             "SELECT * FROM userDB WHERE email = :email AND password = :password"
         )
+        print(f"Validate login query return....")
         values = {"email": email, "password": password}
         check_login = conn.execute(query, values)
         login_entry = check_login.all()[0]
-        print(f"check_login == {login_entry}")
-        print(f"check_login TYPE == {type(login_entry)}")
-        print(f"check_login_API == {login_entry[3]}")
+        #print(f"check_login == {login_entry}")
+        #print(f"check_login TYPE == {type(login_entry)}")
+        #print(f"check_login_API == {login_entry[3]}")
         result_login = len(login_entry)
-        print(login_entry[3], login_entry[4], login_entry[5])
-        print(f"result_login == {result_login}")
+        #print(login_entry[3], login_entry[4], login_entry[5])
+        #print(f"result_login == {result_login}")
         if result_login > 1:
             print("Login success")
             return (
@@ -223,30 +226,35 @@ def new_vessel_due_to_arrive(data, email, gsheet_cred_path):
         gsheet_cred_path, connect_args={"ssl": {"ssl_ca": "/etc/ssl/cert.pem"}}
     )
 
-    # Clean up entire VDA data array - can be 300+ into proper columns before storing in SQL DB
-    # Insert each JSON object into the table
     values = []
     # insert_query = """
     #     INSERT INTO vessel_due_to_arrive_UCE (vessel_name, call_sign, imo_number, flag, due_to_arrive_dt, location_from, location_to)
     #     VALUES (%s, %s, %s, %s, %s, %s, %s)
     #     """
-    #    INSERT INTO vessel_due_to_arrive_UCE (vessel_name, call_sign, imo_number, flag, due_to_arrive_dt, location_from, location_to) VALUES (:vessel_name, :call_sign, :imo_number, :flag, :due_to_arrive_dt, :location_from, :location_to)
     query_VDA = text(
         "INSERT INTO vessel_due_to_arrive_UCE (vessel_name, call_sign, imo_number, flag, due_to_arrive_dt, location_from, location_to) VALUES (:vessel_name, :call_sign, :imo_number, :flag, :due_to_arrive_dt, :location_from, :location_to)"
     )
 
     for item in data:
+        print(f"new_vessel_due_to_arrive Items in data: {item}")
         vessel_particulars = item["vda_vessel_particulars"]
+        print(f"vessel_particulars Items in data: {vessel_particulars}")
         vessel_name = vessel_particulars[0]["vessel_nm"]
+        print(f"vessel_name Items in data: {vessel_name}")
         call_sign = vessel_particulars[0]["vessel_call_sign"]
+        print(f"call_sign Items in data: {call_sign}")
         imo_number = vessel_particulars[0]["vessel_imo_no"]
+        print(f"imo_number Items in data: {imo_number}")
         flag = vessel_particulars[0]["vessel_flag"]
+        print(f"flag Items in data: {flag}")
         due_to_arrive_dt = item["vda_vessel_due_to_arrive_dt"]
-        due_to_arrive_dt = datetime.fromisoformat(
-            due_to_arrive_dt.replace("Z", "+00:00")
-        ).strftime("%Y-%m-%d %H:%M:%S")
+        due_to_arrive_dt = datetime.fromisoformat(due_to_arrive_dt.replace('Z', '+00:00')).strftime('%Y-%m-%d %H:%M:%S')
+        print(f"due_to_arrive_dt Items in data: {due_to_arrive_dt}")
         location_from = item["vda_vessel_location_from"]
+        print(f"location_from Items in data: {location_from}")
         location_to = item["vda_vessel_location_to"]
+        print(f"location_to Items in data: {location_to}")
+
 
         # values = (vessel_name, call_sign, imo_number, flag, due_to_arrive_dt, location_from, location_to)
         # values.append((vessel_name, call_sign, imo_number, flag, due_to_arrive_dt, location_from, location_to))
@@ -263,11 +271,11 @@ def new_vessel_due_to_arrive(data, email, gsheet_cred_path):
         )
 
     with engine_VDA.connect() as conn:
-        result = conn.execute(query_VDA, values)
-        conn.commit()
+      result = conn.execute(query_VDA, values)
+      conn.commit()
         # result = conn.executemany(insert_query, values)
         # result = conn.execute(query_pilot, values_pilot)
-
+    #print(f"VDA Values list = {values}")
     print("New new_vessel_due_to_arrive execute success")
     return 1
 
@@ -296,7 +304,7 @@ def get_map_data(db_creds):
         result_VCP = conn.execute(query)
         result_all_VCP = result_VCP.fetchall()
         column_names_VCP = result_VCP.keys()
-        print(result_all_VCP)
+        #print(result_all_VCP)
         print(f"length of result_all_VCP = {len(result_all_VCP)}")
         df2 = pd.DataFrame(result_all_VCP, columns=column_names_VCP)
         # sorting by first name
@@ -307,7 +315,7 @@ def get_map_data(db_creds):
         result_ETA = conn.execute(query)
         result_all_ETA = result_ETA.fetchall()
         column_names_ETA = result_ETA.keys()
-        print(result_all_ETA)
+        #print(result_all_ETA)
         print(f"length of result_all_ETA = {len(result_all_ETA)}")
         df3 = pd.DataFrame(result_all_ETA, columns=column_names_ETA)
         df3.drop(columns=["call_sign", "flag", "vessel_name"], inplace=True)
@@ -346,10 +354,10 @@ def delete_all_rows_vessel_location(db_creds):
 # Store data into MPA_vessel_data from GET
 def MPA_GET(api_response, gsheet_cred_path):
     data_list = json.loads(api_response)
-    print(f"API response = {(data_list)}")
+    #print(f"API response = {(data_list)}")
     print(f"API response[0] = {data_list[0]}")
     vessel_data = data_list[0]["vesselParticulars"]
-    print(f"vessel_data = {vessel_data}")
+    #print(f"vessel_data = {vessel_data}")
     print(f"vessel_data['vesselName'] = {vessel_data['vesselName']}")
     print(f"vessel_data['callSign'] = {vessel_data['callSign']}")
     latitude = data_list[0]["latitude"]
@@ -399,7 +407,7 @@ def MPA_GET(api_response, gsheet_cred_path):
 
 def MPA_GET_arrivaldeclaration(api_response, gsheet_cred_path):
     data_list = json.loads(api_response)
-    print(f"API response = {(data_list)}")
+    #print(f"API response = {(data_list)}")
     print(f"API response[0] = {data_list[0]}")
 
     # Initialize variables to keep track of the latest record and time
@@ -457,3 +465,168 @@ def MPA_GET_arrivaldeclaration(api_response, gsheet_cred_path):
     with engine_MPA_arrivaldeclaration.connect() as conn:
         MPA_arrivaldeclaration = conn.execute(query, values)
     return MPA_arrivaldeclaration
+
+
+
+
+# def MPA_GET_GSHEET(api_response,gsheet_cred_path):
+
+#   gc = pygsheets.authorize(service_account_file=gsheet_cred_path)
+#   print(gc.spreadsheet_titles())
+#   sh = gc.open('SGTD Received APIs')
+#   worksheet_replit = sh.worksheet_by_title("replit_vessel_current_position")
+  
+#   data_list = json.loads(api_response)
+#   print(f"API response = {(data_list)}")
+#   print(f"API response[0] = {data_list[0]}")
+#   vessel_data = data_list[0]['vesselParticulars']
+#   print(f"vessel_data = {vessel_data}")
+#   print(f"vessel_data['vesselName'] = {vessel_data['vesselName']}")
+#   print(f"vessel_data['callSign'] = {vessel_data['callSign']}")
+#   latitude = data_list[0]['latitude']
+#   print(f"latitude = {data_list[0]['latitude']}")
+#   longitude = data_list[0]['longitude']
+#   latitude_degrees = data_list[0]['latitudeDegrees']
+#   longitude_degrees = data_list[0]['longitudeDegrees']
+#   speed = data_list[0]['speed']
+#   course = data_list[0]['course']
+#   heading = data_list[0]['heading']
+#   timestamp = data_list[0]['timeStamp']
+
+#   #Column Headers
+#   column_headers = list(vessel_data.keys())
+#     # Extract all the keys from the payload data
+#   payload_keys = list(data_list[0].keys())
+#   print(f"payload_keys: {payload_keys}")
+#     # Append the payload keys (excluding 'vessel_particulars') to column_headers
+#   column_headers.extend([key for key in payload_keys if key != 'vesselParticulars'])
+#   # Write the headers as the first row
+#   worksheet_replit.insert_rows(
+#   row=1,number=1,values=column_headers)
+
+#   #Column Values
+# # Extract the payload data
+#   # Extract the payload data
+#   payload_data = data_list[0]
+#   print(f"payload_data: {payload_data}")
+#   # Extract all the values from the payload data
+#   payload_values = [payload_data[key] for key in payload_keys if key != 'vesselParticulars']
+#   print(f"payload_values: {payload_data}")
+#   # Create a list of values corresponding to the keys
+#   vessel_particulars_values = list(vesselParticulars.values())
+#   print(f"vessel_particulars_values: {vessel_particulars_values}")
+#   # Extend row_values with payload_values
+#   row_values = vessel_particulars_values + payload_values
+
+#   # Append the data as a new row
+#   worksheet_replit.append_table(values=row_values, start='A2')
+#   worksheet_replit.delete_rows(1)
+#   return f"Vessel Current Location Data saved to Google Sheets.{row_values}"
+
+
+
+
+
+
+
+
+
+
+
+# CREATE TABLE vessel_movement_UCE (
+# 	id int NOT NULL AUTO_INCREMENT,
+#     vessel_nm VARCHAR(255),
+#     vessel_imo_no VARCHAR(255),
+#     vessel_flag VARCHAR(255),
+#     vessel_call_sign VARCHAR(255),
+#     vessel_location_from VARCHAR(255),
+#     vessel_location_to VARCHAR(255),
+#     vessel_movement_height VARCHAR(255),
+#     vessel_movement_type VARCHAR(255),
+#     vessel_movement_start_dt DATETIME,
+#     vessel_movement_end_dt DATETIME,
+#     vessel_movement_status VARCHAR(255),
+#     vessel_movement_draft VARCHAR(255),
+#     Timestamp_vessel_movement DATETIME,
+#     Timestamp_query DATETIME default now(),
+#     PRIMARY KEY (`id`)
+# );
+
+# CREATE TABLE vessel_current_position_UCE (
+# 	id int NOT NULL AUTO_INCREMENT,
+#     vessel_nm VARCHAR(255),
+#     vessel_imo_no VARCHAR(255),
+#     vessel_call_sign VARCHAR(255),
+#     vessel_flag VARCHAR(255),
+#     vessel_length FLOAT,
+#     vessel_depth FLOAT,
+#     vessel_type VARCHAR(255),
+#     vessel_grosstonnage FLOAT,
+#     vessel_nettonnage FLOAT,
+#     vessel_deadweight FLOAT,
+#     vessel_mmsi_number VARCHAR(255),
+#     vessel_year_built INT,
+#     vessel_latitude DECIMAL(10, 6),
+#     vessel_longitude DECIMAL(10, 6),
+#     vessel_latitude_degrees DECIMAL(10, 6),
+#     vessel_longitude_degrees DECIMAL(10, 6),
+#     vessel_speed FLOAT,
+#     vessel_course FLOAT,
+#     vessel_heading FLOAT,
+#     vessel_time_stamp DATETIME,
+#     Timestamp_vessel_current_position DATETIME,
+#     Timestamp_query DATETIME default now(),
+#     PRIMARY KEY (`id`)
+# );
+
+# CREATE TABLE MPA_arrivaldeclaration (
+#     id INT AUTO_INCREMENT PRIMARY KEY,
+#     vessel_name VARCHAR(255),
+#     call_sign VARCHAR(255),
+#     imo_number VARCHAR(255),
+#     flag VARCHAR(255),
+#     location VARCHAR(255),
+#     grid VARCHAR(255),
+#     purpose VARCHAR(255),
+#     agent VARCHAR(255),
+#     reported_arrival_time DATETIME
+# );
+
+# CREATE TABLE MPA_vessel_data (
+# 	id int NOT NULL AUTO_INCREMENT,
+#     vesselName VARCHAR(255),
+# 	callsign VARCHAR(255),
+#     imoNumber VARCHAR(255),
+#     flag VARCHAR(255),
+#     vesselLength FLOAT,
+#     vesselBreadth FLOAT,
+#     vesselDepth FLOAT,
+#     vesselType VARCHAR(255),
+#     grossTonnage FLOAT,
+#     netTonnage FLOAT,
+#     deadweight FLOAT,
+#     mmsiNumber VARCHAR(255),
+#     yearBuilt INT,
+#     latitude DECIMAL(10, 6),
+#     longitude DECIMAL(10, 6),
+#     latitudeDegrees DECIMAL(10, 6),
+#     longitudeDegrees DECIMAL(10, 6),
+#     speed FLOAT,
+#     course FLOAT,
+#     heading FLOAT,
+#     timeStamp DATETIME,
+#     time_queried DATETIME default now(),
+#     PRIMARY KEY (`id`)
+# );
+
+
+# CREATE TABLE IF NOT EXISTS vessel_due_to_arrive_UCE (
+#         id INT AUTO_INCREMENT PRIMARY KEY,
+#         vessel_name VARCHAR(255),
+#         call_sign VARCHAR(255),
+#         imo_number VARCHAR(255),
+#         flag VARCHAR(255),
+#         due_to_arrive_dt DATETIME,
+#         location_from VARCHAR(255),
+#         location_to VARCHAR(255)
+#     )
