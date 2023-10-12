@@ -16,7 +16,7 @@ RUN apt-get install -y pkg-config libmariadb-dev
 # Install the required Python packages
 RUN pip install -r requirements.txt
 
-# RUN chmod +x start.sh
+RUN chmod +x ./start.sh
 
 # Copy the rest of the application code into the container
 COPY . .
