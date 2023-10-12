@@ -8,7 +8,8 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install the required Python packages
-RUN pip install -r requirements.txt && apt-get install -y pkg-config libmysqlclient-dev
+RUN  apt-get install -y pkg-config libmysqlclient-dev
+RUN pip install -r requirements.txt
 
 # Copy the rest of the application code into the container
 COPY . .
