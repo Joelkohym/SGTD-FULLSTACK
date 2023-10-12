@@ -8,7 +8,8 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install the required system packages first
-RUN apt-get update && apt-get install -y pkg-config libmysqlclient-dev
+RUN apt-get update
+RUN apt-get install -y pkg-config libmysqlclient-dev
 # Install the required Python packages
 RUN pip install -r requirements.txt
 
