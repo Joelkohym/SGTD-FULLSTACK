@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Update the package lists
-RUN apt-get update
+RUN apt-get update && apt-get install -y build-essential
 
 # Install the required system packages
 RUN apt-get install -y pkg-config libmariadb-dev
