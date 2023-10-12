@@ -7,9 +7,12 @@ WORKDIR /app
 # Copy the requirements file into the container
 COPY requirements.txt .
 
-# Install the required system packages first
+# Update the package lists
 RUN apt-get update
-RUN apt-get install -y pkg-config libmysqlclient-dev
+
+# Install the required system packages
+RUN apt-get install -y pkg-config libmariadb-dev
+
 # Install the required Python packages
 RUN pip install -r requirements.txt
 
