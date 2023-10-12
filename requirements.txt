@@ -11,4 +11,3 @@ Flask-MySQLdb
 pytz
 folium
 flask-swagger-ui
-pkg-config
