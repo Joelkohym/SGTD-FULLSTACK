@@ -7,8 +7,9 @@ WORKDIR /app
 # Copy the requirements file into the container
 COPY requirements.txt .
 
+# Install the required system packages first
+RUN apt-get update && apt-get install -y pkg-config libmysqlclient-dev
 # Install the required Python packages
-RUN  apt-get install -y pkg-config libmysqlclient-dev
 RUN pip install -r requirements.txt
 
 # Copy the rest of the application code into the container
