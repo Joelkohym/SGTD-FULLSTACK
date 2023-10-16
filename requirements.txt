@@ -11,3 +11,4 @@ Flask-MySQLdb
 pytz
 folium
 flask-swagger-ui
+flask-cors
