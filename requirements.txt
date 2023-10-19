@@ -12,3 +12,4 @@ pytz
 folium
 flask-swagger-ui
 flask-cors
+flask-jwt-extended
