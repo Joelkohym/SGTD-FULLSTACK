@@ -466,7 +466,21 @@ def MPA_GET_arrivaldeclaration(api_response, gsheet_cred_path):
         MPA_arrivaldeclaration = conn.execute(query, values)
     return MPA_arrivaldeclaration
 
-
+def get_user_detail(userId,email):
+  # print(f'{userId, email}')
+  with engine.connect() as conn:
+      query = text("SELECT * FROM userDB WHERE id = :userId AND email = :email")
+      values = {"userId": userId,"email": email}
+      receive_db = conn.execute(query, values)
+      receive_data = receive_db.all()[0]
+  return (
+     { "id":receive_data[0],
+       "email":receive_data[1],
+       "api_key":receive_data[3],
+       "participant_id": receive_data[4],
+       "pitstop_url":receive_data[5],
+       "gc":receive_data[6]}
+  )
 
 
 # def MPA_GET_GSHEET(api_response,gsheet_cred_path):
