@@ -9,6 +9,7 @@ from flask import (
     flash,
     g,
 )
+from flask.helpers import make_response
 from flask_mysqldb import MySQL
 from sqlalchemy import create_engine, text
 import re
@@ -39,6 +40,7 @@ from db_table_view_request import (
     merge_arrivedepart_declaration_df,
 )
 from database import (
+    get_user_detail,
     new_registration,
     validate_login,
     receive_details,
@@ -51,12 +53,18 @@ from database import (
 from flask_swagger_ui import get_swaggerui_blueprint
 import logging
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from datetime import timedelta
 
 app = Flask(__name__)
 app.config['MYSQL_HOST'] = os.environ['MYSQL_HOST']
 app.config['MYSQL_USER'] = os.environ['MYSQL_USER']
 app.config['MYSQL_PASSWORD'] = os.environ['MYSQL_PASSWORD']
 app.config['MYSQL_DB'] = os.environ['MYSQL_DB']
+app.config['JWT_SECRET_KEY'] = os.environ['JWT_SECRET_KEY']
+# JWT token expiration is set to 1 hour
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
+jwt = JWTManager(app)
 
 app.secret_key = os.urandom(24)
 CORS(app)
@@ -82,26 +90,29 @@ def login():
             print(f"Length of Login data = {len(login_data)}")
             # print(f"Validate_login value returned = {validate_login(email, password)}")
             if len(login_data) == 5:
-                id = login_data[0]
+                # id = login_data[0]
                 print(f"login_data[0] == {login_data[0]}")
-                API_KEY = login_data[1]
-                pID = login_data[2]
-                pitstop = login_data[3]
-                gSheet = login_data[4]
+                # API_KEY = login_data[1]
+                # pID = login_data[2]
+                # pitstop = login_data[3]
+                # gSheet = login_data[4]
 
-                session["loggedin"] = True
-                session["id"] = id
-                session["email"] = email
-                session["participant_id"] = pID
-                session["pitstop_url"] = pitstop
-                session["api_key"] = API_KEY
-                session["gc"] = gSheet
-                session["IMO_NOTFOUND"] = []
-                session["IMO_FOUND"] = []
+                # session["loggedin"] = True
+                # session["id"] = id
+                # session["email"] = email
+                # session["participant_id"] = pID
+                # session["pitstop_url"] = pitstop
+                # session["api_key"] = API_KEY
+                # session["gc"] = gSheet
+                # session["IMO_NOTFOUND"] = []
+                # session["IMO_FOUND"] = []
+
+                user = {"id": login_data[0],"username": email}
+                access_token = create_access_token(identity=user)
 
                 msg = f"Login success for {email}, please enter Vessel IMO number(s)"
                 print(f"Login success for {email}, redirect")
-                return msg, 200
+                return jsonify(access_token=access_token, msg= msg), 200
                 # return render_template('vessel_request.html', msg=msg, email=email)
             else:
                 msg = "Invalid credentials, please try again.."
@@ -120,8 +131,11 @@ def login():
 
 
 @app.route("/table_view", methods=["GET"])
+@jwt_required()
 def table_view():
-    if session["email"]:
+    header = get_jwt_identity()
+    user = get_user_detail(header["id"], header["username"])
+    if user:
         msg = "Rendering Table View"
         return msg, 200
     else:
@@ -131,14 +145,17 @@ def table_view():
 
 
 @app.route("/api/table_pull", methods=["GET", "POST"])
+@jwt_required()
 def table_pull():
-    if session["email"]:
+    header = get_jwt_identity()
+    user = get_user_detail(header["id"], header["username"])
+    if user:
         if request.method == "POST":
-            session["IMO_NOTFOUND"] = []
-            session["TABLE_IMO_NOTFOUND"] = []
+            # session["IMO_NOTFOUND"] = []
+            # session["TABLE_IMO_NOTFOUND"] = []
             # Clear all rows in vessel_movement_UCE and vessel_current_position_UCE table
-            print(f'Session gc = {session["gc"]}')
-            delete_all_rows_table_view(session["gc"])
+            print(f'Session gc = {user["gc"]}')
+            delete_all_rows_table_view(user["gc"])
             user_vessel_imo = request.form["imo"]
             try:
                 # Split vessel_imo list into invdivual records
@@ -159,7 +176,7 @@ def table_pull():
 
                 # ========================          START PULL vessel_due_to_arrive by date            ===========================
                 url_vessel_due_to_arrive = (
-                    f"{session['pitstop_url']}/api/v1/data/pull/vessel_due_to_arrive"
+                    f"{user['pitstop_url']}/api/v1/data/pull/vessel_due_to_arrive"
                 )
                 print("Start PULL_vessel_due_to_arrive thread...")
                 print(datetime.now())
@@ -167,8 +184,8 @@ def table_pull():
                     target=PULL_vessel_due_to_arrive,
                     args=(
                         url_vessel_due_to_arrive,
-                        session["participant_id"],
-                        session["api_key"],
+                        user["participant_id"],
+                        user["api_key"],
                     ),
                 ).start()
                 print("End PULL_vessel_due_to_arrive thread...")
@@ -195,8 +212,11 @@ def table_pull():
 
 
 @app.route("/table_view_request/<imo>", methods=["GET", "POST"])
+@jwt_required()
 def table_view_request(imo):
-    if session["email"]:
+    header = get_jwt_identity()
+    user = get_user_detail(header["id"], header["username"])
+    if user:
         try:
             imo_list = imo.split(",")
             print(f"IMO ==== {imo}")
@@ -228,7 +248,8 @@ def table_view_request(imo):
             result = merged_filtered_df.to_json(orient="table")
             print(f"Result 200 == {result}")
             return result, 200
-        except:
+        except Exception as e:
+            print(f"Error: {e}")
             msg = "Something went wrong with the data, please ensure IMO Number is valid. Display table_view.html"
             return msg, 406
     else:
@@ -239,15 +260,15 @@ def table_view_request(imo):
 # Make function for logout session
 @app.route("/logout")
 def logout():
-    session.pop("loggedin", None)
-    session.pop("id", None)
-    session.pop("email", None)
-    session.pop("participant_id", None)
-    session.pop("pitstop_url", None)
-    session.pop("api_key", None)
-    session.pop("gc", None)
-    session.pop("IMO_FOUND", None)
-    session.pop("IMO_NOT_FOUND", None)
+    # session.pop("loggedin", None)
+    # session.pop("id", None)
+    # session.pop("email", None)
+    # session.pop("participant_id", None)
+    # session.pop("pitstop_url", None)
+    # session.pop("api_key", None)
+    # session.pop("gc", None)
+    # session.pop("IMO_FOUND", None)
+    # session.pop("IMO_NOT_FOUND", None)
     msg = "Logged out Successfully"
     return msg, 200
 
@@ -282,12 +303,15 @@ def register():
 # https://sgtd-api.onrender.com/api/vessel_current_position_db/receive/test@sgtradex.com
 # ==========================================       Vessel data PULL         ============================================
 @app.route("/api/vessel", methods=["POST"])
+@jwt_required()
 def Vessel_data_pull():
-    if session["email"]:
+    header = get_jwt_identity()
+    user = get_user_detail(header["id"], header["username"])
+    if user:
         if request.method == "POST":
-            session["IMO_NOTFOUND"] = []
+            imo_notfound = []
             # Clear all rows in vessel_movement_UCE and vessel_current_position_UCE table
-            delete_all_rows_vessel_location(session["gc"])
+            delete_all_rows_vessel_location(user["gc"])
             user_vessel_imo = request.form["vessel_imo"]
             # Split vessel_imo list into invdivual records
             try:
@@ -300,19 +324,20 @@ def Vessel_data_pull():
                 # ============= PULL 2 API's from SGTD: VCP + VDA =================
                 PULL_GET_VCP_VDA_MPA(
                     input_list,
-                    session["pitstop_url"],
-                    session["gc"],
-                    session["participant_id"],
-                    session["api_key"],
-                    session["IMO_NOTFOUND"],
+                    user["pitstop_url"],
+                    user["gc"],
+                    user["participant_id"],
+                    user["api_key"],
+                    imo_notfound,
                 )
                 toc = time.perf_counter()
                 print(
                     f"PULL duration for vessel map query {len(input_list)} in {toc - tic:0.4f} seconds"
                 )
                 msg = "PULL vessel map query success, redirect to vessel_map"
-                return redirect(url_for("Vessel_map")), 303
-            except:
+                return redirect(url_for("Vessel_map", imo_notfound=imo_notfound)), 303
+            except Exception as e:
+                print(f"Error: {e}")
                 msg = "Invalid IMO. Please ensure IMO is valid."
                 return msg, 406
         msg = "Wrong method, only POST Method allowed, redirect to login page"
@@ -322,8 +347,11 @@ def Vessel_data_pull():
 
 
 @app.route("/vessel_request/<msg>", methods=["GET", "POST"])
+@jwt_required()
 def vessel_request(msg):
-    if session["email"]:
+    header = get_jwt_identity()
+    user = get_user_detail(header["id"], header["username"])
+    if  user:
         msg = "Display Vessel Request Page"
         return msg, 200
     else:
@@ -333,11 +361,14 @@ def vessel_request(msg):
 
 # 9490820 / 9929297
 # ====================================####################MAP DB##############################========================================
-@app.route("/api/vessel_map", methods=["GET", "POST"])
-def Vessel_map():
-    if session["email"]:
-        print(f"VESSEL MAP PRINTING IMO_NOTFOUND = {session['IMO_NOTFOUND']}")
-        DB_queried_data = get_map_data(session["gc"])
+@app.route("/api/vessel_map/<imo_notfound>", methods=["GET", "POST"])
+@jwt_required()
+def Vessel_map(imo_notfound):
+    header = get_jwt_identity()
+    user = get_user_detail(header["id"], header["username"])
+    if user:
+        print(f"VESSEL MAP PRINTING IMO_NOTFOUND = {imo_notfound}")
+        DB_queried_data = get_map_data(user["gc"])
         df1 = pd.DataFrame(DB_queried_data[0])
         print(f"df1 VESSEL MAP = {df1.to_string(index=False, header=True)}")
 
@@ -345,17 +376,15 @@ def Vessel_map():
         if display_data[0] == 1:
             return render_template(
                 display_data[1],
-                user=session["email"],
-                IMO_NOTFOUND=session["IMO_NOTFOUND"],
+                user=user["email"],
+                IMO_NOTFOUND=user["IMO_NOTFOUND"],
             )
 
         else:
-            return (
-                render_template(
-                    display_data[1],
-                    user=session["email"],
-                    IMO_NOTFOUND=session["IMO_NOTFOUND"],
-                ),
+            return render_template(
+                display_data[1],
+                user=user["email"],
+                IMO_NOTFOUND=imo_notfound,
             )
     print("session['email']' doesn't exists, redirect to login")
     msg = "/api/vessel_map session['email'] is not valid, redirect login page"
@@ -364,9 +393,12 @@ def Vessel_map():
 
 ####################################  START UPLOAD UCC #############################################
 @app.route("/UCC_upload")
+@jwt_required()
 def UCC_upload():
-    if session["email"]:
-        email = session["email"]
+    header = get_jwt_identity()
+    user = get_user_detail(header["id"], header["username"])
+    if user:
+        email = user["email"]
         return render_template("UCC_upload.html", email=email)
     else:
         msg = "/api/vessel_map session['email'] is not valid, redirect login page"
@@ -374,8 +406,11 @@ def UCC_upload():
 
 
 @app.route("/api/triangular_upload", methods=["POST"])
+@jwt_required()
 def triangular_upload():
-    if session["email"]:
+    header = get_jwt_identity()
+    user = get_user_detail(header["id"], header["username"])
+    if user:
         if request.method == "POST":
             # Get the list of files from webpage
             files = request.files.getlist("files[]")  # Use "files[]" as the key

@@ -13,9 +13,23 @@
       "name": "POST Endpoints"
     }
   ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
   "paths": {
     "/table_view": {
       "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "return render_template('table_view.html', email=email)",
         "responses": {
           "200": {
@@ -58,6 +72,11 @@
     },
     "/table_view_request/{imo}": {
       "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "get_data_from_MPA_Vessel_Arrival_Declaration(imo_list) & get_data_from_vessel_due_to_arrive_and_depart() & merge_arrivedepart_declaration_df(filtered_df_before, Declaration_df) >>> return render_template('table_view.html')",
         "parameters": [
           {
@@ -129,6 +148,11 @@
     },
     "/logout": {
       "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "Logout",
         "responses": {
           "200": {
@@ -140,6 +164,11 @@
     },
     "/vessel_request/{msg}": {
       "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "return render_template('vessel_request.html', msg=msg, email=email)",
         "parameters": [
           {
@@ -191,7 +220,22 @@
     },
     "/api/vessel_map": {
       "get": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "get_map_data(session['gc']) = df1 & display_map(df1) >>> return render_template(display_data[1])",
+        "parameters": [
+          {
+            "name": "imo_notfound",
+            "in": "path",
+            "required": false,
+            "schema": {
+              "type": "array"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful vessel map request",
@@ -494,7 +538,7 @@
         },
         "responses": {
           "200": {
-            "description": "Successful operation",
+            "description": "Successful operation. Set the access_token as Auth Bearer token",
             "content": {
               "application/json": {
                 "schema": {
@@ -502,10 +546,10 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "email": {
+                      "access_token": {
                         "type": "string"
                       },
-                      "password": {
+                      "msg": {
                         "type": "string"
                       }
                     }
@@ -556,6 +600,11 @@
     },
     "/api/table_pull": {
       "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "delete_all_rows_table_view(session['gc']) & PULL_vessel_due_to_arrive(PULL VDA from SGTD) >>> return redirect(url_for('table_view_request', imo=user_vessel_imo)).",
         "requestBody": {
           "required": true,
@@ -772,6 +821,11 @@
     },
     "/api/vessel": {
       "post": {
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "delete_all_rows_vessel_location(session['gc']) & PULL_GET_VCP_VDA_MPA >>> return redirect(url_for('Vessel_map'))",
         "requestBody": {
           "required": true,
