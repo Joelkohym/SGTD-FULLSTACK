@@ -79,9 +79,6 @@ engine = create_engine(db_connection_string,
 
 
 @app.route("/")
-def index():
-  return Path('static/index.html').read_text()
-
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
