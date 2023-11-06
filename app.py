@@ -375,10 +375,10 @@ def Vessel_map(imo_notfound):
 
         display_data = display_map(df1)
         if display_data[0] == 1:
-            return display_data[1]
+            return df1
 
         else:
-            return display_data[1]
+            return df1
     print("session['email']' doesn't exists, redirect to login")
     msg = "/api/vessel_map session['email'] is not valid, redirect login page"
     return msg, 401
