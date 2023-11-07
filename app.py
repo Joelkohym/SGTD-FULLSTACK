@@ -352,7 +352,7 @@ def Vessel_data_pull():
 def vessel_request(msg):
     header = get_jwt_identity()
     user = get_user_detail(header["id"], header["username"])
-    if  user:
+    if user:
         msg = "Display Vessel Request Page"
         return msg, 200
     else:
@@ -372,13 +372,21 @@ def Vessel_map(imo_notfound):
         DB_queried_data = get_map_data(user["gc"])
         df1 = pd.DataFrame(DB_queried_data[0])
         print(f"df1 VESSEL MAP = {df1.to_string(index=False, header=True)}")
+        return df1
+        # display_data = display_map(df1)
+        # if display_data[0] == 1:
+        #     return render_template(
+        #         display_data[1],
+        #         user=user["email"],
+        #         IMO_NOTFOUND=user["IMO_NOTFOUND"],
+        #     )
 
-        display_data = display_map(df1)
-        if display_data[0] == 1:
-            return df1
-
-        else:
-            return df1
+        # else:
+        #     return render_template(
+        #         display_data[1],
+        #         user=user["email"],
+        #         IMO_NOTFOUND=imo_notfound,
+        #     )
     print("session['email']' doesn't exists, redirect to login")
     msg = "/api/vessel_map session['email'] is not valid, redirect login page"
     return msg, 401
